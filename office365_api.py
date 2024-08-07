@@ -1,8 +1,11 @@
+## https://www.youtube.com/watch?v=dkxVTX5Hs_Q&list=PL2siCn4iJewMoQw-UF56Aximqflbo2q8q&index=13
 ## from https://www.youtube.com/watch?v=w0pBFo9zpiU&list=PL2siCn4iJewMoQw-UF56Aximqflbo2q8q&index=21
+# main library repository: https://github.com/vgrem/Office365-REST-Python-Client.git#egg=Office365-REST-Python-Client
+# examples: https://github.com/iamlu-coding/python-sharepoint-office365-api
 
 # example of usage:
 '''
-from office365_api import SharePoint
+import office365_api
 sp1 = office365_api.SharePoint(sharepoint_site='https://minersutep.sharepoint.com/sites/CZO_data',
     sharepoint_site_name='CZO_data', sharepoint_doc='data')
 print(sp1.get_files_list())
@@ -10,17 +13,33 @@ print(sp1.get_folder_list())
 sp1.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII')
 '''
 
+# to install:
+# pip install Office365-REST-Python-Client
+# pip install python-environ
+
 from urllib import response
 import environ
 from office365.sharepoint.client_context import ClientContext
 from office365.runtime.auth.user_credential import UserCredential
+from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.files.file import File
 import datetime
+
+from itertools import permutations
 
 env = environ.Env()
 environ.Env.read_env()
 
-
+values = ['2ebf97c4-d59a-4cc2-a690-f9b2c288bdd6',
+          'cab2a1ef-78ec-43d6-96f2-57f4aefe64cf',
+          '857c21d2-1a16-43a4-90cf-d57f3fab9d2f',
+          'Twx8Q~vSfk4C8qcxV521cF3K2~aOcMwgYzPBLbnF',
+          'd53d3165-e13d-486e-872f-a7ea0c003fc5']
+def generate_username_password_combinations(values):
+    if len(values) != 5:
+        raise ValueError("The input list must contain exactly 5 values.")
+    # Generate all permutations of the 5 values taken 2 at a time
+    return list(permutations(values, 2))
 
 
 class SharePoint:
@@ -47,10 +66,30 @@ class SharePoint:
             self.__sharepoint_doc_ = sharepoint_doc
         self.conn = None
 
-    def _auth(self):
+    def print_all_vars(self):
+        print(f'username: {self.__username_}')
+        print(f'password: {self.__password_}')
+        print(f'sharepoint_site: {self.__sharepoint_site_}')
+        print(f'sharepoint_site_name: {self.__sharepoint_site_name_}')
+        print(f'sharepoint_doc: {self.__sharepoint_doc_}')
+
+    def _auth(self):  # With username and password
         try:
             self.conn = ClientContext(self.__sharepoint_site_).with_credentials(
                 UserCredential(self.__username_, self.__password_))
+            #print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
+        except Exception as e:
+            print(f'Not possible to authenticate.\nError: {e}')
+            return None
+        return self.conn
+
+    def _auth_(self):  # With Client id and secret
+        CLIENT_ID = 'kF-8Q~zeGV3HjcZlPCtgAPhZnAMVaio73LmG9c5C'
+        CLIENT_SECRET = 'c9f13109-0ac9-4a5e-81a4-23d1a00cb8b2'
+        try:
+            client_credentials = ClientCredential(CLIENT_ID, CLIENT_SECRET)
+            self.conn = ClientContext(self.__sharepoint_site_).with_credentials(client_credentials)
+            print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
         except Exception as e:
             print(f'Not possible to authenticate.\nError: {e}')
             return None
@@ -62,6 +101,7 @@ class SharePoint:
         if folder_name is None:
             folder_name = ''
         target_folder_url = f'{self.__sharepoint_doc_}/{folder_name}'
+        print(f'target_folder_url: {target_folder_url}')
         try:
             root_folder = self.conn.web.get_folder_by_server_relative_url(target_folder_url)
             root_folder.expand(["Files", "Folders"]).get().execute_query()
