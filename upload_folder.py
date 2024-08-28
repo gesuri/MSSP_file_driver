@@ -14,11 +14,11 @@ root_folder = r'C:/temp/data2/'  # r'E:/Data/'
 
 if __name__ == '__main__':
     # Create the log file
-    log = Log.Log(sprint=True)
+    log = Log.Log('upload_folder_script.txt')
     # Create the elapsed time object
     et = ElapsedTime.ElapsedTime()
     # set connection to SharePoint
-    sp = office365_api.SharePoint()
+    sp = office365_api.SharePoint(log=log)
     # Get the list of files in the local folder
     files = [f for f in folder_path.rglob('*') if f.is_file()]
     file_len = len(files)

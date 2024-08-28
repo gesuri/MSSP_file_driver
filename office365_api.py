@@ -16,6 +16,7 @@ sp1.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII')
 # to install:
 # pip install Office365-REST-Python-Client
 # pip install python-environ
+# pip install tqdm
 
 import os
 import environ
@@ -23,7 +24,7 @@ from office365.sharepoint.client_context import ClientContext
 from office365.runtime.auth.user_credential import UserCredential
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.files.file import File
-from office365.runtime.client_request_exception import ClientRequestException
+# from office365.runtime.client_request_exception import ClientRequestException
 import datetime
 from time import sleep
 from tqdm import tqdm
@@ -41,6 +42,7 @@ environ.Env.read_env()
 
 class SharePoint:
     pbar = None
+    __total_size_ = 0
 
     def __init__(self, username=None, password=None, client_id=None, client_secret=None, sharepoint_site=None,
                  sharepoint_site_name=None, sharepoint_doc=None, log=None):
@@ -136,7 +138,6 @@ class SharePoint:
         if folder_name is None:
             folder_name = ''
         target_folder_url = f'{self.__sharepoint_doc_}/{folder_name}'
-        # msg = f'target_folder_url: {target_folder_url}'
         try:
             root_folder = self.ctx.web.get_folder_by_server_relative_url(target_folder_url)
             root_folder.expand(["Files", "Folders"]).get().execute_query()
@@ -240,7 +241,7 @@ class SharePoint:
             else:
                 self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
                 return False
-        file_properties = self.get_file_properties(file_name, folder_url)
+        file_properties = self.get_file_properties(file_name, target_file_url.parent.as_posix())
         if file_properties is None:
             file_size_sp = 0
         else:
