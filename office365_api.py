@@ -196,7 +196,7 @@ class SharePoint:
         self.log.info(f'File {file_name} downloaded successfully.')
         return True
 
-    def upload_large_file(self, local_file_path, target_file_url):
+    def upload_large_file(self, local_file_path, target_file_url, chunk_size=CHUNK_SIZE, _retry=-1):
         if self.ctx is None:
             self.getConnection()
         local_file_path = Path(local_file_path)
@@ -209,15 +209,14 @@ class SharePoint:
             self.log.error(f'Not possible to upload file.')
             self.log.error(f'Error: {e}')
             return False
-        target_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.as_posix()}'
-        chunk_size = CHUNK_SIZE
-        self.log.info(f'Uploading file {local_file_path} to {target_file_url}...')
+        targ_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.as_posix()}'
+        self.log.info(f'Uploading file {local_file_path} to {targ_file_url}...')
         elapsed_time = ElapsedTime.ElapsedTime()
         try:
-            self.total_size = os.path.getsize(local_file_path)
+            self.__total_size_ = os.path.getsize(local_file_path)
             with open(local_file_path, 'rb') as local_file:
-                file_name = os.path.basename(target_file_url)
-                folder_url = os.path.dirname(target_file_url)
+                file_name = os.path.basename(targ_file_url)
+                folder_url = os.path.dirname(targ_file_url)
                 folder = self.ctx.web.get_folder_by_server_relative_url(folder_url)
                 upload_session = folder.files.create_upload_session(
                     file_name=file_name,
@@ -231,7 +230,27 @@ class SharePoint:
         except Exception as e:
             self.log.error(f'Not possible to upload file.')
             self.log.error(f'Error: {e}')
-            return False
+            if _retry == -1:
+                self.log.info(f'Trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=5)
+            elif _retry > 0:
+                self.log.info(f'And trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=_retry - 1)
+            else:
+                self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
+                return False
+        file_properties = self.get_file_properties(file_name, folder_url)
+        if file_properties['file_size'] != self.__total_size_:  # check if the file was uploaded correctly
+            self.log.error(f'File {file_name} uploaded incorrectly. {file_properties["file_size"]} != {self.__total_size_}')
+            if _retry == -1:
+                self.log.info(f'Trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=5)
+            elif _retry > 0:
+                self.log.info(f'And trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=_retry - 1)
+            else:
+                self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
+                return False
         self.log.info(f'File {file_name} uploaded successfully.')
         return True
 
@@ -304,6 +323,13 @@ class SharePoint:
             # file_dict = {}
         return properties_list
 
+    def get_file_properties(self, file_name, folder_name):
+        file_properties_list = self.get_file_properties_from_folder(folder_name)
+        for file in file_properties_list:
+            if file['file_name'] == file_name:
+                return file
+        return None
+
     def ensure_folder_exists(self, folder_url):
         if self.ctx is None:
             self.getConnection()
@@ -348,5 +374,5 @@ class SharePoint:
 
     def bar_upload_progress(self, offset):
         mb = 1024 * 1024
-        sys.stdout.write(f"\rUploaded {round(offset/mb,2)} MB of {round(self.total_size/mb,2)} MB ...[{round(offset / self.total_size * 100, 2)}%]")
+        sys.stdout.write(f"\rUploaded {round(offset/mb,2)} MB of {round(self.__total_size_ / mb, 2)} MB ...[{round(offset / self.__total_size_ * 100, 2)}%]")
         sys.stdout.flush()
