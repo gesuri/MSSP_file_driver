@@ -23,9 +23,11 @@ from office365.sharepoint.client_context import ClientContext
 from office365.runtime.auth.user_credential import UserCredential
 from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.files.file import File
+from office365.runtime.client_request_exception import ClientRequestException
 import datetime
 from tqdm import tqdm
 import sys
+from pathlib import Path
 import Log
 import ElapsedTime
 
@@ -184,12 +186,23 @@ class SharePoint:
             self.log.info(f'File {file_name} downloaded successfully in {elapsed_time.elapsed()}')
         except Exception as e:
             self.log.error(f'Not possible to download file.\nError: {e}')
+            return False
         self.log.info(f'File {file_name} downloaded successfully.')
+        return True
 
     def upload_large_file(self, local_file_path, target_file_url):
         if self.ctx is None:
             self.getConnection()
-        target_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url}'
+        local_file_path = Path(local_file_path)
+        target_file_url = Path(target_file_url)
+        # make sure the folder exists on SharePoint, if not, it is created
+        target_folder_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.parent.as_posix()}'
+        try:
+            self.ctx.web.ensure_folder_path(target_folder_url).execute_query()
+        except Exception as e:
+            self.log.error(f'Not possible to upload file.\nError: {e}')
+            return False
+        target_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.as_posix()}'
         chunk_size = CHUNK_SIZE
         self.log.info(f'Uploading file {local_file_path} to {target_file_url}...')
         elapsed_time = ElapsedTime.ElapsedTime()
@@ -210,7 +223,9 @@ class SharePoint:
             self.log.info(f'Upload completed in {elapsed_time.elapsed()}')
         except Exception as e:
             self.log.error(f'Not possible to upload file.\nError: {e}')
+            return False
         self.log.info(f'File {file_name} uploaded successfully.')
+        return True
 
     def download_latest_file(self, folder_name):
         date_format = "%Y-%m-%dT%H:%M:%SZ"
@@ -278,6 +293,17 @@ class SharePoint:
             properties_list.append(file_dict)
             # file_dict = {}
         return properties_list
+
+    def ensure_folder_exists(self, folder_url):
+        if self.ctx is None:
+            self.getConnection()
+        folder_full_url = Path(f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_url}')
+        try:
+            self.ctx.web.ensure_folder_path(folder_full_url.as_posix()).execute_query()
+            return True
+        except Exception as e:
+            self.log.error(f'Problem creating or checking {folder_full_url}. \nError: {e}')
+            return False
 
     def set_username(self, username):
         self.__username_ = username
