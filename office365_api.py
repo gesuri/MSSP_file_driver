@@ -25,6 +25,7 @@ from office365.runtime.auth.client_credential import ClientCredential
 from office365.sharepoint.files.file import File
 from office365.runtime.client_request_exception import ClientRequestException
 import datetime
+from time import sleep
 from tqdm import tqdm
 import sys
 from pathlib import Path
@@ -240,8 +241,12 @@ class SharePoint:
                 self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
                 return False
         file_properties = self.get_file_properties(file_name, folder_url)
-        if file_properties['file_size'] != self.__total_size_:  # check if the file was uploaded correctly
-            self.log.error(f'File {file_name} uploaded incorrectly. {file_properties["file_size"]} != {self.__total_size_}')
+        if file_properties is None:
+            file_size_sp = 0
+        else:
+            file_size_sp = file_properties['file_size']
+        if file_size_sp != self.__total_size_:  # check if the file was uploaded correctly
+            self.log.error(f'File {file_name} uploaded incorrectly. {file_size_sp} != {self.__total_size_}')
             if _retry == -1:
                 self.log.info(f'Trying again...')
                 self.upload_large_file(local_file_path, target_file_url, _retry=5)
@@ -308,6 +313,12 @@ class SharePoint:
 
     def get_file_properties_from_folder(self, folder_name):
         files_list = self.get_files_list(folder_name)
+        if files_list is None:
+            print('Waiting a few seconds...')
+            sleep(5)
+            files_list = self.get_files_list(folder_name)
+            if files_list is None:
+                return []
         properties_list = []
         for file in files_list:
             file_dict = {
