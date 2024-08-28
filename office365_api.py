@@ -113,7 +113,8 @@ class SharePoint:
                 UserCredential(self.__username_, self.__password_))
             # print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
         except Exception as e:
-            self.log.error(f'Not possible to authenticate.\nError: {e}')
+            self.log.error(f'Not possible to authenticate.')
+            self.log.error(f'Error: {e}')
             return None
         return self.ctx
 
@@ -123,7 +124,8 @@ class SharePoint:
             self.ctx = ClientContext(self.__sharepoint_site_).with_credentials(client_credentials)
             # print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
         except Exception as e:
-            self.log.error(f'Not possible to authenticate.\nError: {e}')
+            self.log.error(f'Not possible to authenticate.')
+            self.log.error(f'Error: {e}')
             return None
         return self.ctx
 
@@ -138,7 +140,8 @@ class SharePoint:
             root_folder = self.ctx.web.get_folder_by_server_relative_url(target_folder_url)
             root_folder.expand(["Files", "Folders"]).get().execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to get files list.\nError: {e}')
+            self.log.error(f'Not possible to get files list.')
+            self.log.error(f'Error: {e}')
             return None
         return root_folder.files
 
@@ -152,7 +155,8 @@ class SharePoint:
             root_folder = self.ctx.web.get_folder_by_server_relative_url(target_folder_url)
             root_folder.expand(["Folders"]).get().execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to get folder list.\nError: {e}')
+            self.log.error(f'Not possible to get folder list.')
+            self.log.error(f'Error: {e}')
             return None
         return root_folder.folders
 
@@ -163,7 +167,8 @@ class SharePoint:
         try:
             file = File.open_binary(self.ctx, file_url)
         except Exception as e:
-            self.log.error(f'Not possible to download file.\nError: {e}')
+            self.log.error(f'Not possible to download file.')
+            self.log.error(f'Error: {e}')
             return None
         return file.content
 
@@ -185,7 +190,8 @@ class SharePoint:
             self.pbar.close()
             self.log.info(f'File {file_name} downloaded successfully in {elapsed_time.elapsed()}')
         except Exception as e:
-            self.log.error(f'Not possible to download file.\nError: {e}')
+            self.log.error(f'Not possible to download file.')
+            self.log.error(f'Error: {e}')
             return False
         self.log.info(f'File {file_name} downloaded successfully.')
         return True
@@ -200,7 +206,8 @@ class SharePoint:
         try:
             self.ctx.web.ensure_folder_path(target_folder_url).execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to upload file.\nError: {e}')
+            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Error: {e}')
             return False
         target_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.as_posix()}'
         chunk_size = CHUNK_SIZE
@@ -222,7 +229,8 @@ class SharePoint:
             print()
             self.log.info(f'Upload completed in {elapsed_time.elapsed()}')
         except Exception as e:
-            self.log.error(f'Not possible to upload file.\nError: {e}')
+            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Error: {e}')
             return False
         self.log.info(f'File {file_name} uploaded successfully.')
         return True
@@ -251,7 +259,8 @@ class SharePoint:
             target_folder = self.ctx.web.get_folder_by_server_relative_path(target_folder_url)
             return target_folder.upload_file(file_name, content).execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to upload file.\nError: {e}')
+            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Error: {e}')
             return None
 
     def upload_file_in_chunks(self, file_path, folder_name, chunk_size, chunk_uploaded=None, **kwargs):
@@ -267,7 +276,8 @@ class SharePoint:
                 **kwargs
             ).execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to upload file.\nError: {e}')
+            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Error: {e}')
             return None
 
     def get_list(self, list_name):  # this is for lists and NOT files NOR folders
@@ -302,7 +312,8 @@ class SharePoint:
             self.ctx.web.ensure_folder_path(folder_full_url.as_posix()).execute_query()
             return True
         except Exception as e:
-            self.log.error(f'Problem creating or checking {folder_full_url}. \nError: {e}')
+            self.log.error(f'Problem creating or checking {folder_full_url}.')
+            self.log.error(f'Error: {e}')
             return False
 
     def set_username(self, username):
