@@ -75,27 +75,32 @@ class SharePoint:
             self.__sharepoint_doc_ = env('sharepoint_doc_library')
         else:
             self.__sharepoint_doc_ = sharepoint_doc
-        self.log = log
+        #self.log = log
         if log is not None and isinstance(log, str):
             self.log = Log.Log(log)
+            print('Log is a string')
+        elif isinstance(log, Log.Log):
+            self.log = log
+            print('Log is a log object')
         else:
             self.log = Log.Log(fprint=False, sprint=True)
+            print('Log is a default log object with not print into a file')
         self.getConnection()
 
     def getConnection(self, renew=False):
         if renew:
             self.ctx = None
-            self.log.info('Connection going to renew...')
+            self.log.live('Connection going to renew...')
         if self.ctx is not None:
-            self.log.info('Connection already exists')
+            self.log.live('Connection already exists')
             return
         if self.__client_id_ is not None and len(self.__client_id_) > 0 and self.__client_secret_ is not None and len(
                 self.__client_secret_) > 0:
-            self.log.info('Authenticating with client...')
+            self.log.live('Authenticating with client...')
             self._auth_with_client()
         elif self.__username_ is not None and len(self.__username_) > 0 and self.__password_ is not None and len(
                 self.__password_) > 0:
-            self.log.info('Authenticating with user...')
+            self.log.live('Authenticating with user...')
             self._auth_with_user()
         else:
             self.log.error('No credentials provided.')
