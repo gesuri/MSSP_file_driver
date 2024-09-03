@@ -213,8 +213,16 @@ class SharePoint:
         try:
             self.ctx.web.ensure_folder_path(target_folder_url).execute_query()
         except Exception as e:
-            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Not possible to upload file. When try to create folder {target_folder_url} for file {target_file_url.name}.')
             self.log.error(f'Error: {e}')
+            if _retry == -1:
+                self.log.info(f'Trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=5)
+            elif _retry > 0:
+                self.log.info(f'And trying again...')
+                self.upload_large_file(local_file_path, target_file_url, _retry=_retry - 1)
+            else:
+                self.log.fatal(f'Not possible to upload {local_file_path} to {target_file_url}!!!')
             return False
         targ_file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{target_file_url.as_posix()}'
         self.log.info(f'Uploading file {local_file_path} to {targ_file_url}...')
@@ -235,7 +243,7 @@ class SharePoint:
             print()
             self.log.info(f'Upload completed in {elapsed_time.elapsed()}')
         except Exception as e:
-            self.log.error(f'Not possible to upload file.')
+            self.log.error(f'Not possible to upload file {file_name}.')
             self.log.error(f'Error: {e}')
             if _retry == -1:
                 self.log.info(f'Trying again...')
@@ -244,7 +252,7 @@ class SharePoint:
                 self.log.info(f'And trying again...')
                 self.upload_large_file(local_file_path, target_file_url, _retry=_retry - 1)
             else:
-                self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
+                self.log.fatal(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
                 return False
         file_properties = self.get_file_properties(file_name, target_file_url.parent.as_posix())
         if file_properties is None:
@@ -260,7 +268,7 @@ class SharePoint:
                 self.log.info(f'And trying again...')
                 self.upload_large_file(local_file_path, target_file_url, _retry=_retry - 1)
             else:
-                self.log.error(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
+                self.log.fatal(f'Not possible to upload {local_file_path} to {targ_file_url}!!!')
                 return False
         self.log.info(f'File {file_name} uploaded successfully.')
         return True
