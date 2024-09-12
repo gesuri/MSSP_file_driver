@@ -78,13 +78,13 @@ class SharePoint:
         #self.log = log
         if log is not None and isinstance(log, str):
             self.log = Log.Log(log)
-            print('Log is a string')
+            # print('Log is a string')
         elif isinstance(log, Log.Log):
             self.log = log
-            print('Log is a log object')
+            # print('Log is a log object')
         else:
             self.log = Log.Log(fprint=False, sprint=True)
-            print('Log is a default log object with not print into a file')
+            # print('Log is a default log object with not print into a file')
         self.getConnection()
 
     def getConnection(self, renew=False):

@@ -4,6 +4,7 @@
 # In this case will remove the 'E:/Data/' and use the rest of the path to create the folder structure.
 
 from pathlib import Path
+from datetime import datetime, timedelta
 
 import office365_api
 import Log
@@ -19,12 +20,16 @@ if __name__ == '__main__':
     et = ElapsedTime.ElapsedTime()
     # set connection to SharePoint
     sp = office365_api.SharePoint(log=log)
+    # Get the current time and the time from two days ago
+    specific_time = datetime.now() - timedelta(days=2)
+    # Specific time, if needed (uncomment and set if you want a specific cutoff time)
+    # specific_time = datetime(2024, 9, 5, 10, 30)  # Replace with your specific date and time
     # Get the list of files in the local folder
-    files = [f for f in folder_path.rglob('*') if f.is_file()]
-    file_len = len(files)
+    files = [f for f in folder_path.rglob('*') if
+             f.is_file() and datetime.fromtimestamp(f.stat().st_mtime) >= specific_time]
     idx = 1
     for item in files:
-        log.info(f'File: {item.name}, ({idx}/{file_len})')
+        log.info(f'File: {item.name}, ({idx}/{len(files)})')
         # print(item)
         upload_file = item.relative_to(root_folder)
         # print(upload_file)
