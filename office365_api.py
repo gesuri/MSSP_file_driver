@@ -318,6 +318,32 @@ class SharePoint:
             self.log.error(f'Error: {e}')
             return None
 
+    def rename_file(self, url_src_path_file, url_dst_path_file, _retry=-1):
+        if self.ctx is None:
+            self.getConnection()
+        src = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{Path(url_src_path_file).as_posix()}'
+        dst = Path(url_dst_path_file).name
+        try:
+            # get the file to move
+            src_file = self.ctx.web.get_file_by_server_relative_url(src)
+            # rename the file
+            src_file.rename(dst).execute_query()
+        except Exception as e:
+            self.log.error(f'Not possible to move file. {src} -> {dst}.')
+            self.log.error(f'Error: {e}')
+            if _retry == -1:
+                self.log.info(f'Trying again...')
+                sleep(5)
+                self.rename_file(url_src_path_file, url_dst_path_file, _retry=5)
+            elif _retry > 0:
+                self.log.info(f'And trying again...')
+                sleep(5)
+                self.rename_file(url_src_path_file, url_dst_path_file, _retry=_retry - 1)
+            else:
+                self.log.fatal(f'Not possible to move {url_src_path_file} to {url_dst_path_file}!!!')
+            return False
+        return True
+
     def get_list(self, list_name):  # this is for lists and NOT files NOR folders
         if self.ctx is None:
             self.getConnection()
