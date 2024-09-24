@@ -18,6 +18,139 @@ sp1.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII')
 # pip install python-environ
 # pip install tqdm
 
+'''
+# SharePoint API Integration with Office365 Python Client
+
+## Overview
+
+This project integrates with the SharePoint API using the `Office365-REST-Python-Client` library. The code provides a 
+wrapper around the API, enabling functionalities such as file upload, download, and folder management on SharePoint. It 
+also supports handling large files by breaking them into chunks for upload or download.
+
+## Requirements
+
+- Python 3.x
+- Office365-REST-Python-Client
+- python-environ
+- tqdm
+
+### Installation
+
+To install the necessary libraries, run the following commands:
+
+```bash
+pip install Office365-REST-Python-Client
+pip install python-environ
+pip install tqdm
+```
+
+### Example Usage
+
+```python
+import office365_api
+
+# Initialize the SharePoint class with the required site and document library
+sp1 = office365_api.SharePoint(sharepoint_site='https://minersutep.sharepoint.com/sites/CZO_data',
+    sharepoint_site_name='CZO_data', sharepoint_doc='data')
+
+# Get the list of files in the document library
+print(sp1.get_files_list())
+
+# Get the list of folders in the document library
+print(sp1.get_folder_list())
+
+# Get files from a specific folder path
+sp1.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII')
+```
+
+## Authentication Setup
+
+The `SharePoint` class supports two types of authentication:
+
+1. **Username and Password**
+2. **Client ID and Secret**
+
+Both can be set via environment variables using `python-environ` or directly passed into the class.
+
+### Required Environment Variables
+
+Ensure that the following environment variables are set in your `.env` file:
+
+```
+sharepoint_email=[your_email]
+sharepoint_password=[your_password]
+sharepoint_client_id=[your_client_id]
+sharepoint_client_secret=[your_client_secret]
+sharepoint_url_site=[your_sharepoint_url]
+sharepoint_site_name=[your_site_name]
+sharepoint_doc_library=[your_document_library]
+```
+
+Alternatively, you can provide these values directly when initializing the class.
+
+## Features
+
+### 1. **File and Folder Operations**
+
+- **`get_files_list(folder_name=None)`**: Fetches the list of files in a specified folder. If no folder is specified, it
+ fetches the list from the root of the document library.
+  
+- **`get_folder_list(folder_name=None)`**: Fetches the list of folders in the specified folder. If no folder is 
+specified, it lists the root folder.
+
+- **`download_file(file_name, folder_name)`**: Downloads a specified file from a given folder.
+
+- **`download_large_file(file_name, folder_name, local_path_name)`**: Downloads a large file in chunks and saves it 
+locally.
+
+- **`upload_large_file(local_file_path, target_file_url, chunk_size=CHUNK_SIZE)`**: Uploads a large file to SharePoint 
+in chunks.
+
+- **`upload_file(file_name, folder_name, content)`**: Uploads a small file to the specified folder.
+
+### 2. **Progress Tracking**
+
+The script uses `tqdm` for progress tracking when downloading large files. A progress bar will be displayed to show the 
+upload/download progress.
+
+### 3. **Authentication**
+
+The script supports both user-based and client-based authentication. It will attempt to authenticate using the client ID
+ and secret first. If those are not provided, it will use the username and password for authentication.
+
+### 4. **Logging**
+
+This integration uses a custom logging mechanism via the `Log` class. Logs are displayed in the console and can 
+optionally be saved to a file.
+
+### 5. **Retries**
+
+The script has built-in retry mechanisms for failed file uploads, ensuring that uploads are retried a certain number of 
+times before failing completely.
+
+## Example Configuration for `.env`
+
+Here's an example of what the `.env` file might look like:
+
+```
+sharepoint_email=user@example.com
+sharepoint_password=yourpassword
+sharepoint_client_id=your_client_id
+sharepoint_client_secret=your_client_secret
+sharepoint_url_site=https://minersutep.sharepoint.com/sites/CZO_data
+sharepoint_site_name=CZO_data
+sharepoint_doc_library=data
+```
+
+## References
+
+- [Library Repository](https://github.com/vgrem/Office365-REST-Python-Client.git)
+- [YouTube Tutorial - Part 1](https://www.youtube.com/watch?v=dkxVTX5Hs_Q&list=PL2siCn4iJewMoQw-UF56Aximqflbo2q8q&index=13)
+- [YouTube Tutorial - Part 2](https://www.youtube.com/watch?v=w0pBFo9zpiU&list=PL2siCn4iJewMoQw-UF56Aximqflbo2q8q&index=21)
+- [Example Usage and API](https://github.com/iamlu-coding/python-sharepoint-office365-api)
+```
+'''
+
 import os
 import environ
 from office365.sharepoint.client_context import ClientContext
@@ -34,18 +167,43 @@ import Log
 import ElapsedTime
 
 
-CHUNK_SIZE = 20 * 1000000  # 10MB
+CHUNK_SIZE = 20 * 1000000  # 20Mb
 
 env = environ.Env()
 environ.Env.read_env()
 
 
 class SharePoint:
+    """
+    SharePoint class for interacting with SharePoint's API.
+
+    It supports file and folder operations such as listing, uploading, downloading, and
+    managing large files. The class handles authentication via either user credentials or
+    client credentials and uses environment variables to store sensitive information.
+
+    Attributes:
+        ctx: ClientContext object for handling the SharePoint connection.
+        pbar: Progress bar instance for file download and upload tracking.
+        log: Log object for capturing events and errors.
+        __total_size_: Internal tracking for file size during uploads.
+    """
     pbar = None
     __total_size_ = 0
 
     def __init__(self, username=None, password=None, client_id=None, client_secret=None, sharepoint_site=None,
                  sharepoint_site_name=None, sharepoint_doc=None, log=None):
+        """
+        Initializes the SharePoint class and authenticates using either user or client credentials.
+
+        :param username: SharePoint username (email).
+        :param password: SharePoint password.
+        :param client_id: Client ID for SharePoint app authentication.
+        :param client_secret: Client secret for SharePoint app authentication.
+        :param sharepoint_site: SharePoint site URL.
+        :param sharepoint_site_name: SharePoint site name.
+        :param sharepoint_doc: SharePoint document library name.
+        :param log: Log object to handle logging, defaults to internal Log class.
+        """
         self.ctx = None
         if username is None:
             self.__username_ = env('sharepoint_email')
@@ -75,19 +233,20 @@ class SharePoint:
             self.__sharepoint_doc_ = env('sharepoint_doc_library')
         else:
             self.__sharepoint_doc_ = sharepoint_doc
-        #self.log = log
         if log is not None and isinstance(log, str):
             self.log = Log.Log(log)
-            # print('Log is a string')
         elif isinstance(log, Log.Log):
             self.log = log
-            # print('Log is a log object')
         else:
             self.log = Log.Log(fprint=False, sprint=True)
-            # print('Log is a default log object with not print into a file')
         self.getConnection()
 
     def getConnection(self, renew=False):
+        """
+        Authenticates with SharePoint and initializes the connection context.
+
+        :param renew: If True, re-authenticates even if there is an existing connection.
+        """
         if renew:
             self.ctx = None
             self.log.live('Connection going to renew...')
@@ -107,30 +266,36 @@ class SharePoint:
             self.ctx = None
 
     def print_all_vars(self):
+        """
+        Prints all internal variables (credentials, site information) for debugging.
+        """
         print(f'username: {self.__username_}')
-        print(f'password: {self.__password_}')
         print(f'sharepoint_site: {self.__sharepoint_site_}')
         print(f'sharepoint_site_name: {self.__sharepoint_site_name_}')
         print(f'sharepoint_doc: {self.__sharepoint_doc_}')
         print(f'client_id: {self.__client_id_}')
         print(f'client_secret: {self.__client_secret_}')
 
-    def _auth_with_user(self):  # With username and password
+    def _auth_with_user(self):
+        """
+        Authenticates with SharePoint using username and password credentials.
+        """
         try:
             self.ctx = ClientContext(self.__sharepoint_site_).with_credentials(
                 UserCredential(self.__username_, self.__password_))
-            # print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
         except Exception as e:
             self.log.error(f'Not possible to authenticate.')
             self.log.error(f'Error: {e}')
             return None
         return self.ctx
 
-    def _auth_with_client(self):  # With Client id and secret
+    def _auth_with_client(self):
+        """
+        Authenticates with SharePoint using client ID and secret credentials.
+        """
         try:
             client_credentials = ClientCredential(self.__client_id_, self.__client_secret_)
             self.ctx = ClientContext(self.__sharepoint_site_).with_credentials(client_credentials)
-            # print(self.get_files_list('Bahada/Tower/ts_data_2/2024/Raw_Data/ASCII'))
         except Exception as e:
             self.log.error(f'Not possible to authenticate.')
             self.log.error(f'Error: {e}')
@@ -138,6 +303,12 @@ class SharePoint:
         return self.ctx
 
     def get_files_list(self, folder_name=None):
+        """
+        Retrieves the list of files from the specified folder in the document library.
+
+        :param folder_name: Name of the folder within the document library to list files from.
+        :return: List of files in the folder, or None if the folder is not accessible.
+        """
         if self.ctx is None:
             self.getConnection()
         if folder_name is None:
@@ -153,6 +324,12 @@ class SharePoint:
         return root_folder.files
 
     def get_folder_list(self, folder_name=None):
+        """
+        Retrieves the list of subfolders from the specified folder in the document library.
+
+        :param folder_name: Name of the folder to list subfolders from.
+        :return: List of subfolders, or None if the folder is not accessible.
+        """
         if self.ctx is None:
             self.getConnection()
         if folder_name is None:
@@ -168,6 +345,13 @@ class SharePoint:
         return root_folder.folders
 
     def download_file(self, file_name, folder_name):
+        """
+        Downloads a file from the specified folder in the SharePoint document library.
+
+        :param file_name: Name of the file to download.
+        :param folder_name: Name of the folder containing the file.
+        :return: The content of the file, or None if the download fails.
+        """
         if self.ctx is None:
             self.getConnection()
         file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_name}/{file_name}'
@@ -180,6 +364,14 @@ class SharePoint:
         return file.content
 
     def download_large_file(self, file_name, folder_name, local_path_name):
+        """
+        Downloads a large file in chunks from SharePoint and saves it locally.
+
+        :param file_name: Name of the file to download.
+        :param folder_name: Folder containing the file.
+        :param local_path_name: Local path where the downloaded file should be saved.
+        :return: True if download succeeds, False otherwise.
+        """
         if self.ctx is None:
             self.getConnection()
         file_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_name}/{file_name}'
@@ -204,6 +396,15 @@ class SharePoint:
         return True
 
     def upload_large_file(self, local_file_path, target_file_url, chunk_size=CHUNK_SIZE, _retry=-1):
+        """
+        Uploads a large file to SharePoint in chunks.
+
+        :param local_file_path: Path to the local file to be uploaded.
+        :param target_file_url: Target URL where the file should be uploaded.
+        :param chunk_size: Size of each chunk (default: 10MB).
+        :param _retry: Number of retries in case of failure (default: -1 for infinite retries).
+        :return: True if upload succeeds, False otherwise.
+        """
         if self.ctx is None:
             self.getConnection()
         local_file_path = Path(local_file_path)
@@ -274,6 +475,12 @@ class SharePoint:
         return True
 
     def download_latest_file(self, folder_name):
+        """
+        Downloads the most recently modified file from a specified folder in SharePoint.
+
+        :param folder_name: Name of the folder to retrieve the latest file from.
+        :return: Tuple of latest file name and its content, or None if the download fails.
+        """
         date_format = "%Y-%m-%dT%H:%M:%SZ"
         files_list = self.get_files_list(folder_name)
         if files_list is None:
@@ -290,6 +497,14 @@ class SharePoint:
         return latest_file_name, content
 
     def upload_file(self, file_name, folder_name, content):
+        """
+        Uploads a small file to the specified folder in SharePoint.
+
+        :param file_name: Name of the file to upload.
+        :param folder_name: Folder in which to upload the file.
+        :param content: Content of the file to upload.
+        :return: Response from SharePoint, or None if the upload fails.
+        """
         if self.ctx is None:
             self.getConnection()
         target_folder_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_name}'
@@ -302,6 +517,16 @@ class SharePoint:
             return None
 
     def upload_file_in_chunks(self, file_path, folder_name, chunk_size, chunk_uploaded=None, **kwargs):
+        """
+        Uploads a file to SharePoint in chunks to handle large files.
+
+        :param file_path: Local path of the file to be uploaded.
+        :param folder_name: Folder in which to upload the file.
+        :param chunk_size: Size of each chunk for uploading the file.
+        :param chunk_uploaded: Callback function to track progress during upload.
+        :param kwargs: Additional arguments for file upload.
+        :return: Response from SharePoint, or None if the upload fails.
+        """
         if self.ctx is None:
             self.getConnection()
         target_folder_url = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_name}'
@@ -319,6 +544,14 @@ class SharePoint:
             return None
 
     def rename_file(self, url_src_path_file, url_dst_path_file, _retry=-1):
+        """
+        Renames or moves a file in SharePoint.
+
+        :param url_src_path_file: Source file path in SharePoint.
+        :param url_dst_path_file: Destination file path in SharePoint.
+        :param _retry: Number of retries in case of failure.
+        :return: True if the file was successfully renamed, False otherwise.
+        """
         if self.ctx is None:
             self.getConnection()
         src = f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{Path(url_src_path_file).as_posix()}'
@@ -345,6 +578,12 @@ class SharePoint:
         return True
 
     def get_list(self, list_name):  # this is for lists and NOT files NOR folders
+        """
+        Retrieves items from a specified SharePoint list.
+
+        :param list_name: Name of the SharePoint list to retrieve items from.
+        :return: List of items from the specified SharePoint list.
+        """
         if self.ctx is None:
             self.getConnection()
         target_list = self.ctx.web.lists.get_by_title(list_name)
@@ -352,6 +591,12 @@ class SharePoint:
         return items
 
     def get_file_properties_from_folder(self, folder_name):
+        """
+        Retrieves properties of all files in the specified folder.
+
+        :param folder_name: Name of the folder to retrieve file properties from.
+        :return: List of dictionaries containing file properties.
+        """
         files_list = self.get_files_list(folder_name)
         if files_list is None:
             print('Waiting a few seconds...')
@@ -375,6 +620,13 @@ class SharePoint:
         return properties_list
 
     def get_file_properties(self, file_name, folder_name):
+        """
+        Retrieves properties of a specific file in a given folder.
+
+        :param file_name: Name of the file to retrieve properties for.
+        :param folder_name: Folder containing the file.
+        :return: Dictionary containing the file properties, or None if not found.
+        """
         file_properties_list = self.get_file_properties_from_folder(folder_name)
         for file in file_properties_list:
             if file['file_name'] == file_name:
@@ -382,6 +634,12 @@ class SharePoint:
         return None
 
     def ensure_folder_exists(self, folder_url):
+        """
+        Ensures that a folder exists in SharePoint. If the folder doesn't exist, it creates it.
+
+        :param folder_url: The URL of the folder to ensure.
+        :return: True if the folder exists or was successfully created, False otherwise.
+        """
         if self.ctx is None:
             self.getConnection()
         folder_full_url = Path(f'/sites/{self.__sharepoint_site_name_}/{self.__sharepoint_doc_}/{folder_url}')
@@ -421,9 +679,19 @@ class SharePoint:
         return self.__sharepoint_doc_
 
     def bar_download_progress(self, offset):
+        """
+        Progress bar handler for file downloads.
+
+        :param offset: Current position in the upload (in bytes).
+        """
         self.pbar.update(offset - self.pbar.n)
 
     def bar_upload_progress(self, offset):
+        """
+        Progress bar handler for file uploads.
+
+        :param offset: Current position in the upload (in bytes).
+        """
         mb = 1024 * 1024
         sys.stdout.write(f"\rUploaded {round(offset/mb,2)} MB of {round(self.__total_size_ / mb, 2)} MB ...[{round(offset / self.__total_size_ * 100, 2)}%]")
         sys.stdout.flush()
