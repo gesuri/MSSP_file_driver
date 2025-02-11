@@ -444,7 +444,7 @@ class SharePoint:
             print()
             self.log.info(f'Upload completed in {elapsed_time.elapsed()}')
         except Exception as e:
-            self.log.error(f'Not possible to upload file {file_name}.')
+            self.log.error(f'Not possible to upload file {local_file_path}.')
             self.log.error(f'Error: {e}')
             if _retry == -1:
                 self.log.info(f'Trying again...')
